@@ -89,6 +89,7 @@ func newAssetFreezeRepo(datasource datasource.DataSource[gorm.DB], cache cache.C
 }
 
 func (r *gormAssetRepo) Despoit(ctx context.Context, transId, userId, symbol string, amount types.Numeric) error {
+	// 建立数据库连接, 通过事务确保原子性
 	db, err := r.datasource.GetDB(ctx)
 	if err != nil {
 		return err
