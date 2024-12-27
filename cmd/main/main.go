@@ -13,9 +13,12 @@ import (
 	"go.uber.org/zap"
 )
 
+// 主程序入口
+
 func main() {
 	_ = godotenv.Load()
 
+	// 数据库迁移命令
 	migrateCmd := &cli.Command{
 		Name:  "migrate",
 		Usage: "migrate database",
@@ -65,6 +68,7 @@ func main() {
 		},
 	}
 
+	// 应用程序的主要入口。
 	cmd := &cli.Command{
 		Name: "jasmDex",
 		Action: func(_ context.Context, cmd *cli.Command) error {
