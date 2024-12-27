@@ -5,6 +5,7 @@ import (
 	"github.com/yzimhao/trading_engine/v2/internal/models/types"
 )
 
+// omitempty 标签指示在序列化时，如果字段的值为空，则该字段将被省略。
 type Asset struct {
 	models.UUID   `json:"-"`
 	models.Base   `json:"-"`
