@@ -1,5 +1,9 @@
 # Go 交易系统开发记录
 
+## 问题记录
+1. docker compose 启动报错，端口访问权限问题。
+   1. [关闭winnat](https://stackoverflow.com/questions/65272764/ports-are-not-available-listen-tcp-0-0-0-0-50070-bind-an-attempt-was-made-to)
+
 ## 项目启动
 1. docker compose 启动这些中间件，然后本地启动服务
 
@@ -15,4 +19,4 @@
    2. /gorm/entities: 定义了所有数据库表结构
    3. 其余: 实现接口的结构体和方法实现, 还有测试
    4. 但是此外, assets_repo.go 的 transfer() 原有逻辑存在一定的问题
-4. services: 应用程序的服务层代码，负责处理业务逻辑和与其他服务的交互。服务层调用数据层（如 persistence）的代码，并提供 API 接口供上层调用。
+4. services: 应用程序的服务层代码，负责处理业务逻辑和与其他服务的交互。服务层调用数据层（如 persistence）的代码，并提供 API 接口供上层调用。但是目前尚未开发

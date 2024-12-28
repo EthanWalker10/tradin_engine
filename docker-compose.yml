@@ -22,6 +22,7 @@ services:
     # container_name: rocketmq-broker
     volumes:
       # 映射本地目录权限一定要设置为 777 权限，否则启动不成功
+      # 采用下面的方式则使用 docker volume，需要在下方配置数据卷
       - rocketmq_broker_logs:/home/rocketmq/logs
       - rocketmq_broker_data:/home/rocketmq/store
       - ./conf/broker.conf:/home/rocketmq-5.3.1/conf/broker.conf
@@ -36,6 +37,7 @@ services:
       - 10909:10909
       - 10911:10911
       - 10912:10912
+    # 这里需要事先配置 ./conf/broker.conf 文件
     command: sh mqbroker -c /home/rocketmq-5.3.1/conf/broker.conf
 
   rocketmq-namesrv:
@@ -62,6 +64,7 @@ services:
     ports:
       - 8180:8180
 
+# 配置数据卷
 volumes:
   rocketmq_namesrv_logs:
     name: rocketmq_namesrv_logs

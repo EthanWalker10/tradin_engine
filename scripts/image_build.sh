@@ -8,5 +8,5 @@ if [ "X${TAG}" = "X" ];then
     exit 1
 fi
 
-echo "docker build -f Dockerfile -t yzimhao/haotrader:${TAG} .."
-docker build -f Dockerfile -t yzimhao/haotrader:${TAG} ..
+echo "docker build -f Dockerfile -t ethan/haotrader:${TAG} .."
+docker build -f Dockerfile -t ethan/haotrader:${TAG} ..
