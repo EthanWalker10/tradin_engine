@@ -27,7 +27,7 @@ services:
       - ./conf/broker.conf:/home/rocketmq-5.3.1/conf/broker.conf
       # - ./conf:/home/rocketmq-5.3.1/conf
     environment:
-      - NAMESRV_ADDR=rocketmq-namesrv:9876
+      - NAMESRV_ADDR=rocketmq-namesrv:9875
       # - JAVA_OPTS:=-Duser.home=/opt
       - JAVA_OPT_EXT=-server -Xms64m -Xmx64m -Xmn64m
     depends_on:
@@ -48,14 +48,14 @@ services:
       # 映射本地目录权限一定要设置为 777 权限，否则启动不成功
       - rocketmq_namesrv_logs:/home/rocketmq/logs
     ports:
-      - 9876:9876
+      - 9875:9875
     command: sh mqnamesrv
   rmqdashboard:
     image: apacherocketmq/rocketmq-dashboard:1.0.0
     restart: always
     # container_name: rocketmq-dashboard
     environment:
-      - JAVA_OPTS=-Drocketmq.config.namesrvAddr=rocketmq-namesrv:9876 -Dserver.port=8180 -Drocketmq.config.isVIPChannel=false
+      - JAVA_OPTS=-Drocketmq.config.namesrvAddr=rocketmq-namesrv:9875 -Dserver.port=8180 -Drocketmq.config.isVIPChannel=false
       # - JAVA_OPT_EXT=-Xms128m -Xmx128m -Xmn128m
     depends_on:
       - rocketmq-namesrv
