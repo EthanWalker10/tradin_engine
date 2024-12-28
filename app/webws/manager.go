@@ -1,41 +1,93 @@
 package webws
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"sync"
 
+	"github.com/duolacloud/broker-core"
 	"go.uber.org/zap"
 )
 
+const (
+	websocketMsg = "websocket_msg"
+)
+
 type WsManager struct {
-	Broadcast  chan Message
+	broadcast  chan Message
 	logger     *zap.Logger
 	recv       chan []byte
 	register   chan *client
 	unregister chan *client
-	members    map[*client]bool
+	membersMap map[*client]bool
 	mx         sync.Mutex
+	broker     broker.Broker
+	debug      bool
 }
 
-func NewWsManager(logger *zap.Logger) *WsManager {
+func NewWsManager(logger *zap.Logger, broker broker.Broker) *WsManager {
 	m := WsManager{
-		Broadcast:  make(chan Message),
+		broadcast:  make(chan Message),
 		logger:     logger,
 		recv:       make(chan []byte),
 		register:   make(chan *client),
 		unregister: make(chan *client),
-		members:    make(map[*client]bool),
+		membersMap: make(map[*client]bool),
+		broker:     broker,
 	}
 
 	go m.run()
+	go m.subscribe()
 
 	return &m
 }
 
-func (m *WsManager) Listen(writer http.ResponseWriter, req *http.Request, responseHeader http.Header) {
-	conn, err := upgrader.Upgrade(writer, req, responseHeader)
+func (m *WsManager) SetDebug(v bool) {
+	m.debug = v
+}
+
+// example:
+// 广播给所有订阅某个type的用户
+// Broadcast("depth.usdjpy", "")
+// Broadcast("trade.usdjpy", "")
+
+func (m *WsManager) Broadcast(ctx context.Context, _type string, body any) error {
+	return m.send(ctx, _type, _type, body)
+}
+
+// 单发消息给某一个用户
+// SendTo("1001", "order.new.usdjpy", "")
+// SendTo("1001", "order.cancel.usdjpy", "")
+func (m *WsManager) SendTo(ctx context.Context, uid string, _type string, body any) error {
+	to := fmt.Sprintf("_user.%s", uid)
+	return m.send(ctx, to, _type, body)
+}
+
+func (m *WsManager) send(ctx context.Context, to string, _type string, body any) error {
+	msg := NewMessage(to, _type, body)
+	_body, err := msg.Marshal()
 	if err != nil {
-		m.logger.Sugar().Errorf("webws upgrader.Upgrade %v", err)
+		m.logger.Sugar().Errorf("[ws] msg.Marshal error %v", err)
+		return err
+	}
+
+	err = m.broker.Publish(ctx, websocketMsg, &broker.Message{
+		Body: _body,
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *WsManager) Listen(writer http.ResponseWriter, req *http.Request, responseHeader http.Header) {
+	conn, err := upgrader.Upgrade(writer, req, nil)
+	if err != nil {
+		m.logger.Sugar().Errorf("[ws] upgrader.Upgrade %v", err)
 		return
 	}
 
@@ -45,26 +97,23 @@ func (m *WsManager) Listen(writer http.ResponseWriter, req *http.Request, respon
 	go cli.readPump()
 }
 
-func (m *WsManager) Members() []*client {
-	m.mx.Lock()
-	defer m.mx.Unlock()
+// TODO 多个websocket节点的时候，订阅模式要修改
+func (m *WsManager) subscribe() {
+	m.broker.Subscribe(websocketMsg, func(ctx context.Context, event broker.Event) error {
+		if m.debug {
+			m.logger.Sugar().Debugf("[ws] broker subscribe message: %s", event.Message().Body)
+		}
 
-	var members []*client
-	for c := range m.members {
-		members = append(members, c)
-	}
-	return members
-}
+		var msg Message
+		err := json.Unmarshal(event.Message().Body, &msg)
+		if err != nil {
+			m.logger.Sugar().Errorf("[ws] websocket message unmarshal error: %v", err)
+			return err
+		}
 
-func (m *WsManager) ClientHasAttr(client *client, tag string) bool {
-	return client.hasAttr(tag)
-}
-
-func (m *WsManager) GetClientAttrs(client *client) map[string]bool {
-	client.mx.Lock()
-	defer client.mx.Unlock()
-
-	return client.attrs
+		m.broadcast <- msg
+		return nil
+	})
 }
 
 func (m *WsManager) run() {
@@ -76,8 +125,8 @@ func (m *WsManager) run() {
 				m.mx.Lock()
 				defer m.mx.Unlock()
 
-				m.logger.Sugar().Debugf("[wss] register client: %v", cli)
-				m.members[client] = true
+				m.logger.Sugar().Debugf("[ws] register client: %v", cli)
+				m.membersMap[client] = true
 			}(cli)
 
 		case cli := <-m.unregister:
@@ -85,8 +134,8 @@ func (m *WsManager) run() {
 				m.mx.Lock()
 				defer m.mx.Unlock()
 
-				if _, ok := m.members[client]; ok {
-					delete(m.members, client)
+				if _, ok := m.membersMap[client]; ok {
+					delete(m.membersMap, client)
 					close(client.send)
 
 					client.attrs = nil
@@ -94,14 +143,16 @@ func (m *WsManager) run() {
 				}
 			}(cli)
 
-		case msg := <-m.Broadcast:
+		case msg := <-m.broadcast:
 			go func(message Message) {
 				m.mx.Lock()
 				defer m.mx.Unlock()
 
-				m.logger.Sugar().Debugf("[wss] broadcast message: %v", message)
+				if m.debug {
+					m.logger.Sugar().Debugf("[ws] broadcast message: %v", message)
+				}
 
-				for client := range m.members {
+				for client := range m.membersMap {
 					if !client.hasAttr(message.To) {
 						continue
 					}
@@ -114,13 +165,17 @@ func (m *WsManager) run() {
 						}
 					}
 
+					if m.debug {
+						m.logger.Sugar().Infof("[ws] send to %s body: %v", message.To, message.Response)
+					}
+
 					client.lastMessageHash[message.To] = sign
-					client.send <- message.Body()
+					client.send <- message.ResponseBytes()
 				}
 			}(msg)
 
 		case data := <-m.recv:
-			m.logger.Sugar().Debugf("[wss] recivce message: %s", data)
+			m.logger.Sugar().Debugf("[ws] recivce message: %s", data)
 		}
 	}
 }
