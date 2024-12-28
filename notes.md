@@ -3,6 +3,8 @@
 ## 问题记录
 1. docker compose 启动报错，端口访问权限问题。
    1. [关闭winnat](https://stackoverflow.com/questions/65272764/ports-are-not-available-listen-tcp-0-0-0-0-50070-bind-an-attempt-was-made-to)
+2. 关闭 winnat 之后, ubuntu 无法访问网络了, 目前连 baidu 使用 curl 都失败
+   1. wsl 没有镜像到宿主机，[配置.wslconfig文件](https://github.com/microsoft/WSL/issues/10753)
 
 ## 项目启动
 1. docker compose 启动这些中间件，然后本地启动服务
