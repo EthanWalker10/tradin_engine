@@ -247,6 +247,7 @@ func (s *Matching) flushOrderbookToCache(ctx context.Context, symbol string) {
 			}
 
 			//broadcast depth data
+			// 连接不上 broker，connection refused
 			if err := s.ws.Broadcast(ctx, webws.MsgDepthTpl.Format(map[string]string{"symbol": engine.Symbol()}), data); err != nil {
 				s.logger.Sugar().Errorf("matching ws broadcast error: %v", err)
 			}
