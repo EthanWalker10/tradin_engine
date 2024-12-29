@@ -23,7 +23,7 @@ type WsManager struct {
 	unregister chan *client
 	membersMap map[*client]bool
 	mx         sync.Mutex
-	broker     broker.Broker
+	broker     broker.Broker // Boker 接口
 	debug      bool
 }
 
@@ -73,6 +73,7 @@ func (m *WsManager) send(ctx context.Context, to string, _type string, body any)
 		return err
 	}
 
+	// 核心问题出在这里，err 是这里产生的
 	err = m.broker.Publish(ctx, websocketMsg, &broker.Message{
 		Body: _body,
 	})
@@ -117,8 +118,12 @@ func (m *WsManager) subscribe() {
 }
 
 func (m *WsManager) run() {
+	// 循环监听 channel 事件
 	for {
+		// select 语句用于处理多个通道（channel）操作，它允许在多个通道操作中选择一个可用的通道执行。
+		// 当有多个通道同时准备好时，select 会随机选择一个执行。如果没有通道准备好，则会阻塞直到其中一个通道准备好为止。
 		select {
+		// 注册
 		case cli := <-m.register:
 
 			func(client *client) {
@@ -129,6 +134,7 @@ func (m *WsManager) run() {
 				m.membersMap[client] = true
 			}(cli)
 
+		// 注销
 		case cli := <-m.unregister:
 			func(client *client) {
 				m.mx.Lock()
@@ -143,6 +149,7 @@ func (m *WsManager) run() {
 				}
 			}(cli)
 
+		// 广播
 		case msg := <-m.broadcast:
 			go func(message Message) {
 				m.mx.Lock()

@@ -18,12 +18,17 @@ var (
 	test_symbol = "usdjpy"
 )
 
+// 搞懂这个测试文件的逻辑
+
+// 在 8090 端口监听并建立
 func init() {
 
 	go func() {
 		logger, _ := zap.NewDevelopment()
 		manager = NewWsManager(logger, broker.NewNoopBroker())
+		// 创建空的 gin.Engine
 		r := gin.New()
+		// 捕获所有类型的http请求
 		r.Any("/ws", func(ctx *gin.Context) {
 			manager.Listen(ctx.Writer, ctx.Request, ctx.Request.Header)
 		})
@@ -31,6 +36,7 @@ func init() {
 	}()
 }
 
+// 实际上还是需要建立到
 func clientConn() *websocket.Conn {
 	// s := httptest.NewServer(http.HandlerFunc(_socket.ServeWs))
 	// defer s.Close()
@@ -80,6 +86,7 @@ func TestClient(t *testing.T) {
 		body, _ := json.Marshal(subM)
 
 		t.Logf("%+v, body: %s", subM, body)
+		// 写入消息
 		if err := ws.WriteMessage(websocket.TextMessage, body); err != nil {
 			t.Fatalf("%v", err)
 		}

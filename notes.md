@@ -6,6 +6,7 @@
 2. 关闭 winnat 之后, ubuntu 无法访问网络了, 目前连 baidu 使用 curl 都失败
    1. wsl 没有镜像到宿主机，[配置.wslconfig文件](https://github.com/microsoft/WSL/issues/10753)
 3. 一直报错 ws 的 connection refused，写 demo 测试与 broker 的 ws 连接，发现使用在宿主机 Windows 中使用 127.0.0.1 or IP 地址等都可以建立 ws 连接，但是在 ubuntu 中，使用 IP 不行（并且此时已经配置了镜像，ubuntu ip 与宿主机 ip 一样，是这个原因吗？），使用 127.0.0.1 则可以。
+   1. 暂时没有解决, 定位到 broker 的连接似乎是由 namesrv 自动返回的, 这样也修改不了 broker 的地址了. 
 
 ## 项目启动
 1. docker compose 启动这些中间件，然后本地启动服务
