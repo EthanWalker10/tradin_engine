@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/shopspring/decimal"
 )
 
 func ResponseOK(c *gin.Context, data any) {
@@ -18,4 +19,10 @@ func ResponseError(c *gin.Context, err error) {
 		"ok":  false,
 		"msg": err.Error(),
 	})
+}
+
+func FormatStrNumber(n string, p int) string {
+	d, _ := decimal.NewFromString(n)
+	//TODO check err
+	return d.StringFixed(int32(p))
 }
